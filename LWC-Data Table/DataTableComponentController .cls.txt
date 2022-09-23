@@ -1,0 +1,51 @@
+public with sharing class DataTableController {
+    
+    @AuraEnabled(cacheable=true)
+    public static List<Account> getAccounts(Id accRecordId){
+        return [SELECT Id, Name, Phone , AnnualRevenue FROM Account order by createdDate DESC];    
+    }
+
+    @AuraEnabled
+    public static void deleteAccount(Account objAccount){
+        try{
+            delete objAccount;
+            System.debug('Delete account'+objAccount);
+        }
+        catch(Exception e){
+            throw new AuraHandledException(e.getMessage());    
+        }
+    }
+
+    @AuraEnabled(cacheable=true)
+    public static List<Account> addRows(List<Account> aList){
+        Account acc = new Account();   
+        aList.add(acc);
+        return aList;   
+    }
+
+   @AuraEnabled
+    public static List<Account> createAcc(List<Account> accList){
+        system.debug('accList'+accList);
+        for(Account acc : accList){
+            if(!String.valueOf(acc.Id).startsWith('001')){
+                acc.Id = null;
+            }                
+            System.debug('acc ::: ' + acc);
+        }
+        Database.SaveResult[] saveResult =  Database.insert(accList,false);
+        for(Database.SaveResult save : saveResult){
+            if(save.isSuccess()){
+                System.debug('SaveResult' +save.getId());
+            }
+            
+            else{
+                for(Database.Error err: save.getErrors()){
+                    System.debug('The following error occurred');
+                    System.debug(err.getStatusCode() + ': ' + err.getMessage());
+                    System.debug('Account fields that affected this error: ' + err.getFields());
+                }
+            }
+        }
+        return accList;    
+    }
+}

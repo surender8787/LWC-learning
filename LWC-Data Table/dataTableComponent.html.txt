@@ -1,0 +1,25 @@
+<template>
+    <!--Header-->
+    <lightning-card title="Data Table for Account Creation" icon-name="standard:account">
+      
+    <!--Lightning-datatable-->
+    <div style="height: 300px;">
+        <lightning-datatable key-field="Id"
+        data={accounts}
+        onrowaction={handleRowAction}
+        draft-values={draftvalues}
+        columns={columns}
+        onsave={createAccount}>       
+        </lightning-datatable>
+    </div>
+
+    <!-- Spinner -->
+    <div if:true={showLoadingSpinner}>
+      <lightning-spinner alternative-text="Loading" size="large"></lightning-spinner>
+  </div>
+    
+    <div class="slds-m-around--medium">
+        <lightning-button icon-name="utility:add" variant="success" label="Add New Row" onclick={addRow}></lightning-button>
+    </div>
+  </lightning-card>
+</template>

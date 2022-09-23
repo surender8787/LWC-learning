@@ -1,0 +1,131 @@
+import { LightningElement, track} from 'lwc';
+import getAccounts from '@salesforce/apex/DataTableController.getAccounts';
+import deleteAccount from '@salesforce/apex/DataTableController.deleteAccount';
+import addRows from '@salesforce/apex/DataTableController.addRows';
+import createAcc from '@salesforce/apex/DataTableController.createAcc';
+import { refreshApex } from '@salesforce/apex';
+import { ShowToastEvent } from 'lightning/platformShowToastEvent';
+
+//define row actions
+const actions = [
+    { label: 'Delete', name: 'delete' }
+ ];
+
+ //define columns
+const columns = [
+    { label: 'Account Name', fieldName: 'Name', editable: true },
+    { label: 'Phone', fieldName: 'Phone', type: 'phone', editable:true },
+    { label: 'Annual Revenue', fieldName: 'AnnualRevenue', type: 'currency', editable:true },
+    {type:'action', typeAttributes:{
+        rowActions:actions, menuAlignment:'right'
+    }}
+];
+
+export default class DataTableComponent extends LightningElement {
+    
+    @track columns = columns;
+    @track data=[];
+    @track draftvalues=[];
+    @track record = [];
+    @track showLoadingSpinner = false;
+    @track currentRecordId;
+    
+
+    //fetching the Account records
+    connectedCallback(){
+        getAccounts({accRecordId : this.recordId})
+        .then(resopnse =>{
+            this.data = resopnse;
+        })
+        .catch(err=>{
+            console.log('Error occured' +err);
+        })
+    }
+
+    wiredAccountsResult;
+    error;
+    accounts;
+    //refreshing data after inserton new record and deletion
+    wiredAccounts(result){  
+        this.wiredAccountsResult = result;       
+        if(result.data){
+            this.accounts = result.data;
+            this.error = undefined;
+        }
+        else if(result.error){
+            this.error = result.error;
+            this.accounts = undefined;
+        }
+    }
+
+    //This method is taking events because of we want to know which row is being to targeted
+    handleRowAction(event){
+        const actionName = event.detail.action.name;
+        console.log('Event action', actionName);
+        const row = event.detail.row;
+        console.log('Selected row',row);
+        this.deleteAccount(row);
+    }
+
+    //deleting account and refreshing data
+    deleteAccount(currentRow){
+        console.log('Current Row', currentRow);
+        deleteAccount({objAccount: currentRow})
+        .then(result=>{
+            this.dispatchEvent(new ShowToastEvent({
+                title:'Successfully',
+                message:currentRow.Name + ' Account deleted',
+                variant:'success'
+            }));
+            return refreshApex(this.wiredAccountsResult);
+        }) 
+        .catch(error=>{
+            this.dispatchEvent(new ShowToastEvent({
+                title:'Error',
+                message:error.message,
+                variant:'error'
+            }))
+        })
+
+    }
+
+    //adding new blank row to create record
+    addRow(){
+        //calling addRows method
+        addRows({aList : this.accounts})
+        .then(response =>{
+            this.accounts = response;
+            console.log('Add row data',this.accounts);
+        })
+
+        .catch(err =>{
+            console.log("Error occured" +err);
+        })
+
+    }
+
+    //creating new records through blank row
+    createAccount(event){
+            this.saveDraftValues = event.detail.draftValues;
+            console.log('Save draft values',this.saveDraftValues);
+        createAcc({accList : this.saveDraftValues})
+        .then(response=>{            
+            console.log('account Data', this.accounts);
+                //dispatching showtoastevent
+                this.dispatchEvent(new ShowToastEvent({
+                    title:"Successfully",
+                    message:'Account is created successfully',
+                    variant: 'success'
+                }),);    
+                return refreshApex(this.wiredAccountsResult); 
+        })
+        .catch(error=>{
+            this.dispatchEvent(new ShowToastEvent({
+                title:'error',
+                message: error.body.message,
+                variant: 'error',
+            }),
+            );
+        });
+    }
+}
